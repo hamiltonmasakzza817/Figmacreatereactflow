@@ -22,6 +22,7 @@ import {
 interface RuleBuilderProps {
   rules: Rule[];
   onChange: (rules: Rule[]) => void;
+  singleRule?: boolean; // 是否为单规则模式（IF 节点使用）
 }
 
 // 操作符显示名称映射
@@ -97,7 +98,7 @@ const operatorNeedsValue = (operator: OperatorType): boolean => {
   ].includes(operator);
 };
 
-export function RuleBuilder({ rules, onChange }: RuleBuilderProps) {
+export function RuleBuilder({ rules, onChange, singleRule = false }: RuleBuilderProps) {
   const addRule = () => {
     const newRule: Rule = {
       id: `rule_${Date.now()}`,
@@ -198,46 +199,61 @@ export function RuleBuilder({ rules, onChange }: RuleBuilderProps) {
           {rules.map((rule, ruleIndex) => (
             <Card key={rule.id} className="p-4">
               {/* 规则头部 */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">#{rule.priority || ruleIndex + 1}</Badge>
-                  <Input
-                    value={rule.name || ''}
-                    onChange={(e) => updateRule(rule.id, { name: e.target.value })}
-                    placeholder="规则名称"
-                    className="h-8 w-48 text-sm"
-                  />
+              {!singleRule ? (
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">#{rule.priority || ruleIndex + 1}</Badge>
+                    <Input
+                      value={rule.name || ''}
+                      onChange={(e) => updateRule(rule.id, { name: e.target.value })}
+                      placeholder="规则名称"
+                      className="h-8 w-48 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => moveRule(ruleIndex, 'up')}
+                      disabled={ruleIndex === 0}
+                      title="上移"
+                    >
+                      <ArrowUp className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => moveRule(ruleIndex, 'down')}
+                      disabled={ruleIndex === rules.length - 1}
+                      title="下移"
+                    >
+                      <ArrowDown className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteRule(rule.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="删除规则"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => moveRule(ruleIndex, 'up')}
-                    disabled={ruleIndex === 0}
-                    title="上移"
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => moveRule(ruleIndex, 'down')}
-                    disabled={ruleIndex === rules.length - 1}
-                    title="下移"
-                  >
-                    <ArrowDown className="w-4 h-4" />
-                  </Button>
+              ) : (
+                <div className="flex justify-end mb-4">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => deleteRule(rule.id)}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    title="删除规则"
+                    title="清除规则"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    清除
                   </Button>
                 </div>
-              </div>
+              )}
 
               {/* 条件列表 */}
               <div className="space-y-3">

@@ -14,8 +14,10 @@ export function InclusiveGateway({ data, selected, id }: NodeProps<GatewayNodeDa
     deleteElements({ nodes: [{ id }] });
   };
 
-  const targetHandleColor = getHandleColor(id, 'target', '#a855f7');
-  const sourceHandleColor = getHandleColor(id, 'source', '#a855f7');
+  const targetHandleColor = getHandleColor(id, 'target', '#a855f7', null);
+  const sourceHandleColorRight = getHandleColor(id, 'source', '#a855f7', 'right');
+  const sourceHandleColorTop = getHandleColor(id, 'source', '#a855f7', 'top');
+  const sourceHandleColorBottom = getHandleColor(id, 'source', '#a855f7', 'bottom');
   
   return (
     <div className="relative group">
@@ -44,7 +46,7 @@ export function InclusiveGateway({ data, selected, id }: NodeProps<GatewayNodeDa
         position={Position.Right}
         id="right"
         style={{ 
-          backgroundColor: sourceHandleColor,
+          backgroundColor: sourceHandleColorRight,
           transition: 'background-color 0.2s',
           top: '50%'
         }}
@@ -55,7 +57,7 @@ export function InclusiveGateway({ data, selected, id }: NodeProps<GatewayNodeDa
         position={Position.Top}
         id="top"
         style={{ 
-          backgroundColor: sourceHandleColor,
+          backgroundColor: sourceHandleColorTop,
           transition: 'background-color 0.2s',
           left: '50%'
         }}
@@ -66,7 +68,7 @@ export function InclusiveGateway({ data, selected, id }: NodeProps<GatewayNodeDa
         position={Position.Bottom}
         id="bottom"
         style={{ 
-          backgroundColor: sourceHandleColor,
+          backgroundColor: sourceHandleColorBottom,
           transition: 'background-color 0.2s',
           left: '50%'
         }}

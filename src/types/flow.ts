@@ -3,6 +3,7 @@ export enum NodeType {
   START = 'start',
   END = 'end',
   TASK = 'task',
+  IF = 'if',
   EXCLUSIVE_GATEWAY = 'exclusiveGateway',
   INCLUSIVE_GATEWAY = 'inclusiveGateway',
 }
@@ -111,8 +112,14 @@ export interface EndNodeData extends BaseNodeData {
   type: NodeType.END;
 }
 
+// IF 节点数据
+export interface IfNodeData extends BaseNodeData {
+  type: NodeType.IF;
+  rule?: Rule; // 条件规则（true 走 if 分支，false 走 else 分支）
+}
+
 // 所有节点数据类型联合
-export type FlowNodeData = TaskNodeData | GatewayNodeData | StartNodeData | EndNodeData;
+export type FlowNodeData = TaskNodeData | GatewayNodeData | StartNodeData | EndNodeData | IfNodeData;
 
 // 边数据（连接线）
 export interface EdgeData {

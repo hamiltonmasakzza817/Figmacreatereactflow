@@ -13,8 +13,8 @@ export function TaskNode({ data, selected, id }: NodeProps<TaskNodeData>) {
     deleteElements({ nodes: [{ id }] });
   };
 
-  const targetHandleColor = getHandleColor(id, 'target', '#3b82f6');
-  const sourceHandleColor = getHandleColor(id, 'source', '#3b82f6');
+  const targetHandleColor = getHandleColor(id, 'target', '#3b82f6', null);
+  const sourceHandleColor = getHandleColor(id, 'source', '#3b82f6', null);
 
   return (
     <div className="relative group">

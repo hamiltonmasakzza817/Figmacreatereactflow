@@ -14,6 +14,7 @@ import {
   NodeType,
   TaskNodeData,
   GatewayNodeData,
+  IfNodeData,
   Rule,
 } from '../types/flow';
 
@@ -29,6 +30,7 @@ export function PropertyPanel({ isOpen, onClose, node, onSave }: PropertyPanelPr
   const [description, setDescription] = useState('');
   const [assignee, setAssignee] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [ifConditionRule, setIfConditionRule] = useState<Rule | undefined>(undefined);
   const [defaultPath, setDefaultPath] = useState('');
   const [rules, setRules] = useState<Rule[]>([]);
 
@@ -49,6 +51,14 @@ export function PropertyPanel({ isOpen, onClose, node, onSave }: PropertyPanelPr
         setRules(gatewayData.rules || []);
       } else {
         setRules([]);
+      }
+      
+      // 如果是 IF 节点，加载条件规则
+      if (node.data.type === NodeType.IF) {
+        const ifNodeData = node.data as IfNodeData;
+        setIfConditionRule(ifNodeData.rule);
+      } else {
+        setIfConditionRule(undefined);
       }
     }
   }, [node]);
@@ -83,6 +93,14 @@ export function PropertyPanel({ isOpen, onClose, node, onSave }: PropertyPanelPr
       };
     }
 
+    // 如果是 IF 节点，保存条件规则
+    if (node.data.type === NodeType.IF) {
+      updatedData = {
+        ...updatedData,
+        rule: ifConditionRule,
+      };
+    }
+
     onSave(node.id, updatedData);
     onClose();
   };
@@ -99,6 +117,8 @@ export function PropertyPanel({ isOpen, onClose, node, onSave }: PropertyPanelPr
         return '结束节点';
       case NodeType.TASK:
         return '任务节点';
+      case NodeType.IF:
+        return 'IF 节点';
       case NodeType.EXCLUSIVE_GATEWAY:
         return '排他网关';
       case NodeType.INCLUSIVE_GATEWAY:
@@ -118,6 +138,50 @@ export function PropertyPanel({ isOpen, onClose, node, onSave }: PropertyPanelPr
         return 'secondary';
     }
   };
+
+  const renderIfRules = () => (
+    <div className="space-y-4 mt-6">
+      <Separator />
+      
+      <div className="flex items-start gap-2 p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
+        <AlertCircle className="w-4 h-4 text-cyan-600 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-cyan-800">
+          IF 节点：配置条件表达式。条件为 <strong>true</strong> 时走 IF 出口，为 <strong>false</strong> 时走 ELSE 出口。
+        </p>
+      </div>
+
+      {/* 条件配置 */}
+      <div className="space-y-2">
+        <Label className="text-sm">条件规则</Label>
+        <p className="text-xs text-muted-foreground">
+          配置判断条件，满足条件（true）时执行 IF 分支，不满足（false）时执行 ELSE 分支
+        </p>
+        <RuleBuilder 
+          rules={ifConditionRule ? [ifConditionRule] : []} 
+          onChange={(rules) => setIfConditionRule(rules[0])}
+          singleRule={true}
+        />
+      </div>
+
+      {/* 出口说明 */}
+      <div className="grid grid-cols-2 gap-2 mt-4">
+        <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-xs text-green-700">IF 出口 (true)</span>
+          </div>
+          <p className="text-xs text-green-600">条件满足时执行</p>
+        </div>
+        <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-red-500" />
+            <span className="text-xs text-red-700">ELSE 出口 (false)</span>
+          </div>
+          <p className="text-xs text-red-600">条件不满足时执行</p>
+        </div>
+      </div>
+    </div>
+  );
 
   const renderGatewayRules = () => (
     <div className="space-y-4 mt-6">
@@ -230,6 +294,8 @@ export function PropertyPanel({ isOpen, onClose, node, onSave }: PropertyPanelPr
               </div>
             </>
           )}
+
+          {node.data.type === NodeType.IF && renderIfRules()}
 
           {(node.data.type === NodeType.EXCLUSIVE_GATEWAY || 
             node.data.type === NodeType.INCLUSIVE_GATEWAY) && (

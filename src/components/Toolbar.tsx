@@ -1,4 +1,4 @@
-import { PlayCircle, StopCircle, CheckSquare, GitBranch, GitMerge, Trash2, Download, Upload, Grip, FileCode } from 'lucide-react';
+import { PlayCircle, StopCircle, CheckSquare, GitBranch, GitMerge, Trash2, Download, Upload, Grip, FileCode, GitCommit } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Separator } from './ui/separator';
@@ -54,6 +54,16 @@ const nodeItems: NodeItem[] = [
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-300',
     hoverBg: 'hover:bg-blue-100',
+  },
+  {
+    type: NodeType.IF,
+    icon: <GitCommit className="w-5 h-5" />,
+    label: 'IF 节点',
+    description: 'IF-ELSE 条件',
+    color: 'text-cyan-700',
+    bgColor: 'bg-cyan-50',
+    borderColor: 'border-cyan-300',
+    hoverBg: 'hover:bg-cyan-100',
   },
   {
     type: NodeType.EXCLUSIVE_GATEWAY,

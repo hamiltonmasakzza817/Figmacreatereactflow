@@ -13,7 +13,7 @@ export function StartNode({ data, selected, id }: NodeProps<StartNodeData>) {
     deleteElements({ nodes: [{ id }] });
   };
 
-  const sourceHandleColor = getHandleColor(id, 'source', '#22c55e');
+  const sourceHandleColor = getHandleColor(id, 'source', '#22c55e', null);
 
   return (
     <div className="relative group">

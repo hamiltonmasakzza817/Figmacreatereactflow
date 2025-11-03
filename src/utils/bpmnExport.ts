@@ -79,6 +79,10 @@ function generateNodeElement(node: Node<FlowNodeData>): string {
       return `<bpmn:serviceTask id="${id}" name="${name}">${extensionElements}
     </bpmn:serviceTask>`;
 
+    case NodeType.IF:
+      // IF 节点在 BPMN 中表示为排他网关
+      return `<bpmn:exclusiveGateway id="${id}" name="${name}" />`;
+
     case NodeType.EXCLUSIVE_GATEWAY:
       const exclusiveData = node.data as any;
       const defaultPath = exclusiveData.defaultPath;
@@ -102,12 +106,34 @@ function generateSequenceFlow(edge: Edge<EdgeData>, nodes: Node<FlowNodeData>[])
   const targetRef = sanitizeId(edge.target);
   const name = edge.data?.label ? escapeXml(edge.data.label) : '';
   
+  // 查找源节点
+  const sourceNode = nodes.find(n => n.id === edge.source);
+  
   // 生成条件表达式
   let conditionExpression = '';
-  if (edge.data?.rule) {
+  
+  // 特殊处理 IF 节点
+  if (sourceNode && sourceNode.type === NodeType.IF) {
+    const ifNodeData = sourceNode.data as any;
+    const sourceHandle = edge.sourceHandle;
+    
+    if (ifNodeData.rule) {
+      if (sourceHandle === 'if') {
+        // IF 分支（true）：使用条件规则
+        const expression = ruleToExpression(ifNodeData.rule);
+        conditionExpression = `\n    <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${escapeXml(expression)}</bpmn:conditionExpression>`;
+      } else if (sourceHandle === 'else') {
+        // ELSE 分支（false）：使用条件规则的否定
+        const expression = `not(${ruleToExpression(ifNodeData.rule)})`;
+        conditionExpression = `\n    <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${escapeXml(expression)}</bpmn:conditionExpression>`;
+      }
+    }
+  } else if (edge.data?.rule) {
+    // 普通规则
     const expression = ruleToExpression(edge.data.rule);
     conditionExpression = `\n    <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${escapeXml(expression)}</bpmn:conditionExpression>`;
   } else if (edge.data?.condition?.expression) {
+    // 旧版条件表达式
     conditionExpression = `\n    <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${escapeXml(edge.data.condition.expression)}</bpmn:conditionExpression>`;
   }
 
@@ -211,6 +237,7 @@ function generateShape(node: Node<FlowNodeData>): string {
       width = 36;
       height = 36;
       break;
+    case NodeType.IF:
     case NodeType.EXCLUSIVE_GATEWAY:
     case NodeType.INCLUSIVE_GATEWAY:
       width = 50;
@@ -270,6 +297,7 @@ function getNodeWidth(nodeType?: string): number {
     case NodeType.START:
     case NodeType.END:
       return 36;
+    case NodeType.IF:
     case NodeType.EXCLUSIVE_GATEWAY:
     case NodeType.INCLUSIVE_GATEWAY:
       return 50;
@@ -288,6 +316,7 @@ function getNodeHeight(nodeType?: string): number {
     case NodeType.START:
     case NodeType.END:
       return 36;
+    case NodeType.IF:
     case NodeType.EXCLUSIVE_GATEWAY:
     case NodeType.INCLUSIVE_GATEWAY:
       return 50;

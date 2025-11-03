@@ -22,12 +22,12 @@ import { Trash2 } from 'lucide-react';
 import { StartNode } from './components/nodes/StartNode';
 import { EndNode } from './components/nodes/EndNode';
 import { TaskNode } from './components/nodes/TaskNode';
+import { IfNode } from './components/nodes/IfNode';
 import { ExclusiveGateway } from './components/nodes/ExclusiveGateway';
 import { InclusiveGateway } from './components/nodes/InclusiveGateway';
 import { Toolbar } from './components/Toolbar';
 import { EdgeEditor } from './components/EdgeEditor';
 import { PropertyPanel } from './components/PropertyPanel';
-import { HelpPanel } from './components/HelpPanel';
 import { EdgeHoverProvider, useEdgeHover } from './contexts/EdgeHoverContext';
 import { ruleToFullString } from './utils/ruleUtils';
 import { exportBPMNFile } from './utils/bpmnExport';
@@ -51,6 +51,8 @@ function CustomEdge({
   targetPosition,
   source,
   target,
+  sourceHandleId,
+  targetHandleId,
   data,
 }: EdgeProps<EdgeData>) {
   const [isHovered, setIsHovered] = useState(false);
@@ -114,7 +116,7 @@ function CustomEdge({
   // 处理悬停状态
   const handleMouseEnter = () => {
     setIsHovered(true);
-    setHoveredEdgeId(id, source, target);
+    setHoveredEdgeId(id, source, target, sourceHandleId, targetHandleId);
   };
 
   const handleMouseLeave = () => {
@@ -227,6 +229,7 @@ const nodeTypes = {
   start: StartNode,
   end: EndNode,
   task: TaskNode,
+  if: IfNode,
   exclusiveGateway: ExclusiveGateway,
   inclusiveGateway: InclusiveGateway,
 };
@@ -340,6 +343,9 @@ function FlowCanvas() {
           break;
         case NodeType.TASK:
           data = { type: NodeType.TASK, label: '新任务' };
+          break;
+        case NodeType.IF:
+          data = { type: NodeType.IF, label: 'IF 条件' };
           break;
         case NodeType.EXCLUSIVE_GATEWAY:
           data = {
@@ -577,8 +583,6 @@ function FlowCanvas() {
         node={selectedNode}
         onSave={handleSaveNodeProperties}
       />
-
-      <HelpPanel />
     </div>
   );
 }
