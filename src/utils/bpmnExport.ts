@@ -255,7 +255,7 @@ function generateShape(node: Node<FlowNodeData>): string {
 }
 
 /**
- * 生成连接线图形（改进版，计算路径点）
+ * 生成连接线图形（改进版，计算贝塞尔曲线路径点）
  */
 function generateEdgeShape(edge: Edge<EdgeData>, nodes: Node<FlowNodeData>[], index: number): string {
   const id = sanitizeId(edge.id);
@@ -272,21 +272,176 @@ function generateEdgeShape(edge: Edge<EdgeData>, nodes: Node<FlowNodeData>[], in
       </bpmndi:BPMNEdge>`;
   }
 
-  // 计算源节点和目标节点的中心点
+  // 计算实际的连接点位置
+  const { sourceX, sourceY, targetX, targetY } = calculateConnectionPoints(
+    sourceNode,
+    targetNode,
+    edge.sourceHandle || null,
+    edge.targetHandle || null
+  );
+
+  // 生成贝塞尔曲线的路径点
+  const waypoints = generateBezierWaypoints(sourceX, sourceY, targetX, targetY);
+
+  // 生成 waypoint XML
+  const waypointXML = waypoints
+    .map(wp => `<di:waypoint x="${wp.x}" y="${wp.y}" />`)
+    .join('\n        ');
+
+  return `<bpmndi:BPMNEdge id="Edge_${id}" bpmnElement="${id}">
+        ${waypointXML}
+      </bpmndi:BPMNEdge>`;
+}
+
+/**
+ * 计算实际的连接点位置（考虑 handle 位置）
+ */
+function calculateConnectionPoints(
+  sourceNode: Node<FlowNodeData>,
+  targetNode: Node<FlowNodeData>,
+  sourceHandle: string | null,
+  targetHandle: string | null
+): { sourceX: number; sourceY: number; targetX: number; targetY: number } {
   const sourceWidth = getNodeWidth(sourceNode.type);
   const sourceHeight = getNodeHeight(sourceNode.type);
   const targetWidth = getNodeWidth(targetNode.type);
   const targetHeight = getNodeHeight(targetNode.type);
 
-  const sourceX = Math.round(sourceNode.position.x + sourceWidth / 2);
-  const sourceY = Math.round(sourceNode.position.y + sourceHeight / 2);
-  const targetX = Math.round(targetNode.position.x + targetWidth / 2);
-  const targetY = Math.round(targetNode.position.y + targetHeight / 2);
+  const sourceCenterX = sourceNode.position.x + sourceWidth / 2;
+  const sourceCenterY = sourceNode.position.y + sourceHeight / 2;
+  const targetCenterX = targetNode.position.x + targetWidth / 2;
+  const targetCenterY = targetNode.position.y + targetHeight / 2;
 
-  return `<bpmndi:BPMNEdge id="Edge_${id}" bpmnElement="${id}">
-        <di:waypoint x="${sourceX}" y="${sourceY}" />
-        <di:waypoint x="${targetX}" y="${targetY}" />
-      </bpmndi:BPMNEdge>`;
+  // 计算源节点的输出点位置
+  let sourceX: number, sourceY: number;
+  
+  if (sourceNode.type === NodeType.IF) {
+    // IF 节点的两个输出点
+    if (sourceHandle === 'if') {
+      // TRUE 输出（右上）
+      sourceX = sourceNode.position.x + sourceWidth;
+      sourceY = sourceNode.position.y + sourceHeight * 0.35;
+    } else if (sourceHandle === 'else') {
+      // FALSE 输出（右下）
+      sourceX = sourceNode.position.x + sourceWidth;
+      sourceY = sourceNode.position.y + sourceHeight * 0.65;
+    } else {
+      // 默认右侧中点
+      sourceX = sourceNode.position.x + sourceWidth;
+      sourceY = sourceCenterY;
+    }
+  } else if (sourceNode.type === NodeType.EXCLUSIVE_GATEWAY || sourceNode.type === NodeType.INCLUSIVE_GATEWAY) {
+    // 网关节点的多个输出点
+    if (sourceHandle === 'right') {
+      sourceX = sourceNode.position.x + sourceWidth;
+      sourceY = sourceCenterY;
+    } else if (sourceHandle === 'top') {
+      sourceX = sourceCenterX;
+      sourceY = sourceNode.position.y;
+    } else if (sourceHandle === 'bottom') {
+      sourceX = sourceCenterX;
+      sourceY = sourceNode.position.y + sourceHeight;
+    } else {
+      // 默认右侧
+      sourceX = sourceNode.position.x + sourceWidth;
+      sourceY = sourceCenterY;
+    }
+  } else {
+    // 默认：从右侧输出
+    sourceX = sourceNode.position.x + sourceWidth;
+    sourceY = sourceCenterY;
+  }
+
+  // 目标节点的输入点（左侧中点）
+  const targetX = targetNode.position.x;
+  const targetY = targetCenterY;
+
+  return {
+    sourceX: Math.round(sourceX),
+    sourceY: Math.round(sourceY),
+    targetX: Math.round(targetX),
+    targetY: Math.round(targetY)
+  };
+}
+
+/**
+ * 生成贝塞尔曲线的路径点（平滑曲线）
+ * 使用自适应采样策略，确保曲线平滑
+ */
+function generateBezierWaypoints(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number
+): Array<{ x: number; y: number }> {
+  const waypoints: Array<{ x: number; y: number }> = [];
+
+  // 计算距离
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  // 如果距离很短，直接返回起点和终点
+  if (distance < 50) {
+    waypoints.push({ x: startX, y: startY });
+    waypoints.push({ x: endX, y: endY });
+    return waypoints;
+  }
+
+  // 计算控制点（水平贝塞尔曲线）
+  // 控制点偏移量根据距离自适应，确保曲线自然
+  const controlPointOffset = Math.min(distance * 0.4, 150);
+  
+  const cp1X = startX + controlPointOffset;
+  const cp1Y = startY;
+  const cp2X = endX - controlPointOffset;
+  const cp2Y = endY;
+
+  // 动态计算采样点数量
+  // 策略：每 30-40 像素至少一个采样点，确保曲线平滑
+  // 最少 5 个点，最多 30 个点
+  const pointsPerUnit = 35; // 每 35 像素一个点
+  const numPoints = Math.max(5, Math.min(30, Math.ceil(distance / pointsPerUnit)));
+  
+  // 采样贝塞尔曲线生成路径点
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    const point = calculateBezierPoint(
+      startX, startY,
+      cp1X, cp1Y,
+      cp2X, cp2Y,
+      endX, endY,
+      t
+    );
+    waypoints.push({
+      x: Math.round(point.x),
+      y: Math.round(point.y)
+    });
+  }
+
+  return waypoints;
+}
+
+/**
+ * 计算三次贝塞尔曲线上的点
+ */
+function calculateBezierPoint(
+  x0: number, y0: number,  // 起点
+  x1: number, y1: number,  // 控制点1
+  x2: number, y2: number,  // 控制点2
+  x3: number, y3: number,  // 终点
+  t: number                // 参数 t (0-1)
+): { x: number; y: number } {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const mt3 = mt2 * mt;
+  const t2 = t * t;
+  const t3 = t2 * t;
+
+  const x = mt3 * x0 + 3 * mt2 * t * x1 + 3 * mt * t2 * x2 + t3 * x3;
+  const y = mt3 * y0 + 3 * mt2 * t * y1 + 3 * mt * t2 * y2 + t3 * y3;
+
+  return { x, y };
 }
 
 /**
